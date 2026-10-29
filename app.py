@@ -204,14 +204,22 @@ def submit():
     text = payload.get("text")
     creator_id = payload.get("creator_id", "unknown")
 
+    # Step 2 - JSON goes in: pull text and creator_id out of the body
+    if not isinstance(text, str) or not text.strip():
+        return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
+
     # Step 3 - one real signal that we first tested from the terminal
     # python detector.py "some text"
     import detector
     model_score = detector.model_signal(text)
 
-    # Step 2 - JSON goes in: pull text and creator_id out of the body
-    if not isinstance(text, str) or not text.strip():
-        return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
+    # Step 5 - second signal
+    import stylometry
+    style_score = stylometry.style_signal(text)
+
+    # Step 6 - combine both signals
+    import scoring
+    combined_score = scoring.combine_signals(model_score, style_score)
 
     # Step 4 - log the decision. The content_id is what /appeal needs later.
     content_id = f"c_{uuid.uuid4().hex[:12]}"
@@ -219,18 +227,20 @@ def submit():
         content_id=content_id,
         creator_id=creator_id,
         model_score=model_score,
+        style_score=style_score,
+        combined_score=combined_score,
         status="decided",
     )
 
-    # Step 1 - the route answers. Hardcoded without any logic yet.
+    # Step 1 - the route answers.
     return jsonify({
         "content_id": content_id,
         "creator_id": creator_id,
         "guess": "unsure",
-        "confidence": model_score,
+        "confidence": combined_score,
         "label": "not built yet",
         "model_score": model_score,
-        "style_score": None,
+        "style_score": style_score,
     }), 200
 
 @app.post("/appeal")

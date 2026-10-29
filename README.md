@@ -127,8 +127,12 @@ Stylometry cannot determine authorship or understand why a person writes in a pa
      signals disagree? -->
 
 **The rule:**
+I use a weighted average of the two signals. The model signal gets more weight because the stylometric signal produced a strong false positive on a plain human-written calibration sample. When the signals disagree, the weighted average moves the final score toward the middle instead of letting either signal decide by itself.
+
 
 **The numbers:**
+- Model signal: 75%
+- Style signal: 25%
 
 **Where it lives:** `scoring.py::combine_signals`
 
