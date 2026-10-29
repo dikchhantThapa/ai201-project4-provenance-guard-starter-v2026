@@ -42,62 +42,48 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
+## 1. Limit false positives
 
-<!-- Your criterion. It must name a number. -->
+Of 10 clearly human-written pieces, at most 1 should receive the high-confidence AI label.
 
-
-
-**Why this target:**
-
-
+**Why this target:**  
+A false accusation is more harmful than missing some AI-written text, so the system should be conservative about giving a high-confidence AI label.
 
 ---
 
-## 2.
+## 2. Clearly different texts should have meaningfully different scores
 
-<!-- Your criterion. -->
+The average combined score for clearly AI-written text should be at least 0.15 higher than the average combined score for clearly human-written text.
 
-
-
-**Why this target:**
-
-
+**Why this target:**  
+If clearly different examples receive almost the same score, the signals are not separating the two cases enough to make the confidence score useful.
 
 ---
 
-## 3.
+## 3. All three label outcomes should be reachable
 
-<!-- Your criterion. -->
+Across at least 3 deliberately chosen test inputs, the system should produce all three label variants at least once: high-confidence human, unsure, and high-confidence AI.
 
-
-
-**Why this target:**
-
-
+**Why this target:**  
+Each label should represent a real, reachable outcome. If one of the labels can never be produced, the scoring thresholds are not working as intended.
 
 ---
 
-## 4.
+## 4. Valid appeals should always enter review
 
-<!-- Your criterion. -->
+100% of valid appeals — meaning an existing `content_id` with non-empty reasoning — should change the submission status to `under_review` and be recorded in the audit log.
 
-
-
-**Why this target:**
-
-
+**Why this target:**  
+Submitting an appeal does not mean the original decision is automatically overturned. It means the result should be flagged for review. A valid appeal should never be silently lost or ignored.
 
 ---
 
-## 5.
+## 5. Bad input should fail safely
 
-<!-- Your criterion. -->
+100% of requests with missing or empty `text` should return HTTP 400 with a JSON error message, and none should crash or return HTTP 500.
 
-
-
-**Why this target:**
-
+**Why this target:**  
+Invalid input is expected in a web service. The service should clearly tell the caller what went wrong instead of crashing.
 
 
 ---
