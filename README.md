@@ -35,37 +35,91 @@
 <!-- ═══════════════════════ UNIT 7 — THE BUILD ═══════════════════════ -->
 
 ## What This Does
+A submission enters through `POST /submit` with the writer's text and `creator_id`. The service validates the input and runs two independent signals: a model-based detector that evaluates how predictable the text is to a language model, and a stylometric signal that examines surface writing patterns. The two signal scores are combined into one confidence score. That score is mapped to one of three reader-facing labels: likely human-written, unsure, or likely AI-generated. The decision and its component scores are written to the audit log with a unique `content_id`, and the structured result is returned as JSON. If a writer believes the decision is wrong, they can later use `POST /appeal`, which records their reasoning and moves the submission to `under_review`.
 
 <!-- The path a submission takes, from arriving to the label a reader sees.
      Six or seven steps — this is the trace you wrote in Milestone 1. -->
 
+### False-positive path
 
+If a real writer's work receives an AI-like score, the system may show an AI-related label even though the writing is genuine. The writer can submit an appeal using the content ID and explain why they believe the decision is wrong. The appeal changes the item's status to `under_review` and is recorded in the audit log for later review.
 
+### Endpoint contract
+
+`POST /submit`
+
+Input:
+
+```json
+{
+  "text": "...",
+  "creator_id": "..."
+}
+```
+
+Output:
+
+```json
+{
+  "content_id": "...",
+  "guess": "...",
+  "confidence": 0.0,
+  "label": "...",
+  "model_score": 0.0,
+  "style_score": 0.0
+}
+```
+
+`POST /appeal`
+
+Input:
+
+```json
+{
+  "content_id": "...",
+  "reasoning": "..."
+}
+```
+
+Output:
+
+```json
+{
+  "content_id": "...",
+  "status": "under_review",
+  "message": "..."
+}
+```
 ---
 
 ## Signals and Scoring
+### Signal one — the model signal
 
+**What it measures:**  
+The model signal in `detector.py` measures how predictable the submitted text is to a local language model and converts that into a score where a higher value means the text appears more AI-like.
+
+**Why that might differ between human and AI writing:**  
+AI-generated text can sometimes follow statistically predictable language patterns more consistently than human writing, so a language-model-based signal may detect that regularity.
+
+**What it can't see:**  
+It cannot know who actually wrote the text. Human writing can also be polished, formal, or highly predictable, while AI-generated writing can be edited to become less predictable. A high model score therefore does not prove that AI wrote the submission.
+
+### Signal two — the style signal
+
+**What it measures:**  
+The style signal in `stylometry.py` will measure surface-level writing characteristics such as sentence-length variation, vocabulary diversity, and punctuation patterns.
+
+**Why that might differ between human and AI writing:**  
+Human and AI writing may differ in how much these surface features vary. For example, some generated text may use more uniform sentence structures or vocabulary patterns than naturally written text.
+
+**What it can't see:**  
+Stylometry cannot determine authorship or understand why a person writes in a particular style. A human can intentionally write in a very regular style, and AI can imitate irregular or conversational human writing.
 <!-- For each signal: what property it measures, why that might differ between
      human and AI writing, and WHAT IT CAN'T SEE.
 
      The blind spot is not optional. If you can't name it you don't understand
      the signal yet — and unit 8's attack set is built out of blind spots. -->
 
-### Signal one — the model signal
-
-**What it measures:**
-
-**Why that might differ between human and AI writing:**
-
-**What it can't see:**
-
-### Signal two — the style signal
-
-**What it measures:**
-
-**Why that might differ between human and AI writing:**
-
-**What it can't see:**
 
 ### The combining rule
 
