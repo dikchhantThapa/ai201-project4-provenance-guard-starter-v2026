@@ -221,6 +221,9 @@ def submit():
     import scoring
     combined_score = scoring.combine_signals(model_score, style_score)
 
+    # Step 8 - turn the combined score into a reader-facing label
+    guess, label = scoring.score_to_label(combined_score)
+
     # Step 4 - log the decision. The content_id is what /appeal needs later.
     content_id = f"c_{uuid.uuid4().hex[:12]}"
     audit.log_decision(
@@ -229,6 +232,8 @@ def submit():
         model_score=model_score,
         style_score=style_score,
         combined_score=combined_score,
+        guess=guess,
+        label=label,
         status="decided",
     )
 
@@ -236,9 +241,9 @@ def submit():
     return jsonify({
         "content_id": content_id,
         "creator_id": creator_id,
-        "guess": "unsure",
+        "guess": guess,
         "confidence": combined_score,
-        "label": "not built yet",
+        "label": label,
         "model_score": model_score,
         "style_score": style_score,
     }), 200
@@ -246,31 +251,55 @@ def submit():
 @app.post("/appeal")
 def appeal():
     """
-    A writer says you got it wrong. ← TODO — Milestone 5
-
-    Expects JSON:
-        {"content_id": "...", "reasoning": "..."}
-
-    Should:
-      1. Check the content_id actually exists — `audit.entries_for(id)` tells
-         you. A typo here fails silently and looks like a broken endpoint,
-         which is the single most common way this milestone eats an hour.
-      2. Record the appeal with `audit.log_appeal(...)`, which moves the item
-         to `under_review`.
-      3. Confirm to the writer. No automatic re-checking needed.
-
-    This is the smallest endpoint in the project and the one that matters most
-    to the person on the other end. It's the only thing standing between a
-    wrong accusation and nothing at all.
+    A writer says you got it wrong.
     """
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
 
-    # TODO: delete this and build the route.
+    if not isinstance(payload, dict):
+        return jsonify({
+            "error": "bad_request",
+            "message": "Send a JSON object."
+        }), 400
+
+    content_id = payload.get("content_id")
+    reasoning = payload.get("reasoning")
+
+    if not isinstance(content_id, str) or not content_id.strip():
+        return jsonify({
+            "error": "bad_request",
+            "message": "Send a valid content_id."
+        }), 400
+
+    if not isinstance(reasoning, str) or not reasoning.strip():
+        return jsonify({
+            "error": "bad_request",
+            "message": "Send non-empty reasoning for the appeal."
+        }), 400
+
+    content_id = content_id.strip()
+    reasoning = reasoning.strip()
+
+    entries = audit.entries_for(content_id)
+
+    if not entries:
+        return jsonify({
+            "error": "not_found",
+            "message": "No submission was found with that content_id."
+        }), 404
+
+    creator_id = entries[0].get("creator_id", "unknown")
+
+    appeal_entry = audit.log_appeal(
+        content_id=content_id,
+        creator_id=creator_id,
+        reasoning=reasoning,
+    )
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /appeal isn't built yet — see the TODO in app.py.",
-        "you_sent": payload,
-    }), 501
+        "content_id": content_id,
+        "status": appeal_entry["status"],
+        "message": "Appeal received. This submission is now under review."
+    }), 200
 
 
 # ── Already works ─────────────────────────────────────────────────────────────
