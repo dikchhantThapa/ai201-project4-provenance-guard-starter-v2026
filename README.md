@@ -717,7 +717,113 @@ The first three entries are the AI-written samples and average `0.6921`. The las
 ```
 
 **Diagnoses**
+### Criterion 2 — AI vs. human score spread
 
+**Stage:** signal one and the combining rule
+
+The AI and human scores overlapped too much. Two of the three AI samples had
+model scores of 0.5348 and 0.6013, while two human samples scored 0.6425 and
+0.5686. Because the model signal receives 75% of the combined score, that
+overlap carried strongly into the final scores. The style signal also did not
+fully separate the groups; for example, one human sample had a style score of
+0.7729 while one AI sample had 0.7725. As a result, the final average separation
+was only 0.1179 instead of the required 0.15.
+
+### Evasion attacks EV02, EV03, EV06, and EV07
+
+**Stage:** signal two
+
+These attacks changed surface writing characteristics such as sentence shape,
+punctuation, or variation. My style signal directly measures those features, so
+the edits changed the stylometric score enough to make the AI-written text look
+less confidently AI-like. Their combined scores stayed below the 0.70 AI
+threshold, so they were labeled unsure.
+
+### Evasion attacks EV04 and EV08
+
+**Stage:** signal one
+
+These attacks affected properties that influence the model-based detector.
+EV04 used unusual wording, which made the text less predictable to the language
+model. EV08 used a short input that gave the model less evidence to work with.
+Their model scores were too low to support a high-confidence AI label, so both
+fell into the unsure range.
+
+### Evasion attack EV01
+
+**Stage:** signal one and the combining rule
+
+EV01 had a very AI-like style score of 0.7785, but its model score was only
+0.1635. Because the model signal receives 75% of the weight, the low model score
+dominated the combination and pulled the final score down to 0.3173, causing
+AI-written text to be labeled human.
+
+### Evasion attack EV05
+
+**Stage:** signal one and signal two
+
+The heavy human-editing pass fooled both signals. Its model score was 0.3212 and
+its style score was 0.3436, so neither detector produced strong AI evidence.
+The combined score was therefore only 0.3268 and the text was labeled human.
+
+### Evasion attack EV09
+
+**Stage:** combining rule and label mapping
+
+The model score was 0.7042, but the style score was only 0.5886. Combining the two reduced the final score to 0.6753. Because the label mapping requires the final combined score to be at least 0.70 for the AI label, the result became unsure.
+
+### False-positive attacks FP02 through FP06
+
+**Stage:** signal one, with reinforcement from signal two
+
+Formal, careful, structured human writing looked highly predictable to the
+model detector. These human samples received high model scores, and several
+also received fairly high style scores. That pushed their combined scores above
+the 0.70 threshold even though the writing was genuinely human.
+
+### False-positive attack FP07
+
+**Stage:** signal one and the combining rule
+
+FP07 shows the risk of heavily weighting the model signal. Its style score was
+only 0.3498, which was relatively human-like, but its model score was 0.8816.
+Because the model receives 75% of the weight, the final score still reached
+0.7487 and produced a high-confidence AI label for human writing.
+
+### Malformed attack MF02
+
+**Stage:** route
+
+The route checks for missing or empty text but does not reject text that is too
+short for the detector. The single-character input reached the model code,
+which raised a ValueError, and the request became an HTTP 500 instead of a
+controlled 400 response.
+
+### Malformed attacks MF03 through MF08
+
+**Stage:** route
+
+The route currently treats almost any non-empty string as valid text. That lets
+control characters, punctuation-only input, a huge single word, emoji-only
+text, right-to-left text, and extremely long text reach the scoring pipeline.
+The signals then assign normal human or AI labels to inputs that should instead
+be rejected or handled separately.
+
+### Malformed attack RQ06
+
+**Stage:** route
+
+The route validates the text type but does not require `creator_id` to be a
+string. A JSON object was accepted as the creator ID and the request continued
+through scoring instead of returning a 400 error.
+
+### Malformed attack RQ07
+
+**Stage:** route
+
+The route assumes the parsed JSON body is an object and calls `.get()` on it.
+When the request body is a JSON array, that assumption fails and raises an
+AttributeError, producing HTTP 500 instead of a controlled 400 response.
 <!-- For each miss AND each broken attack: the stage and the mechanism.
 
      Your service has five stages: the route, signal one, signal two, the
