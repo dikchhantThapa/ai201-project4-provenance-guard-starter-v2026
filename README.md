@@ -247,20 +247,23 @@ Relevant entries from the response:
 
 ## Rate Limiting
 
-**My limits:** ___ per minute, ___ per day
+**My limits:** 5 per minute, 50 per day
 
 **Why those numbers and not others:**
+A normal writer is unlikely to submit more than five pieces of writing in one minute, so five per minute still allows normal use while slowing down scripts that rapidly probe the detector. The daily limit of 50 allows repeated legitimate use without letting one caller send hundreds or thousands of submissions.
 <!-- Think about two people: a real writer submitting their own work a few
      times an hour, and a script sending a thousand variations to map your
      thresholds. Your numbers have to be liveable for the first and hostile to
      the second. -->
 
-**What a caller counts as:** <!-- per address, or per creator_id? They fail
+**What a caller counts as:** 
+A caller is counted by creator_id when one is provided. If there is no usable creator_id, the service falls back to the caller's address.
+<!-- per address, or per creator_id? They fail
 differently — one script can look like a thousand callers, and one household
 can look like one. -->
 
 **The run of status codes when I pushed past it:**
-
+200 200 200 200 200 429 429 429 429 429 429 429 429 429 429
 <!-- python run_attacks.py --flood 15 -->
 
 ```
